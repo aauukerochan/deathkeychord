@@ -1,0 +1,12 @@
+{
+  "Author": "aauukerochan",
+  "Name": "Death Key Chord Plugin",
+  "Punchline": "Sends key chord on death.",
+  "Description": "Sends key chord on death. Defaults to holding F24, but can be configured. Recommend to use with Push to Mute in Discord for silly reasons.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "discord",
+    "keychord",
+    "death"
+  ]
+}
