@@ -38,11 +38,14 @@ public sealed class Plugin : IDalamudPlugin
 
     private const int DebounceMs = 500;
 
+    private long deathDetectedAtMs = -1;
+    private bool pendingMute;
+
+
     private long lastDebugTickAtMs;
     public bool DebugWasDead => wasDead;
     public bool DebugChordHeld => chordHeld;
     public uint? DebugHp => ObjectTable.LocalPlayer?.CurrentHp;
-
 
     public Plugin()
     {
@@ -171,18 +174,51 @@ public sealed class Plugin : IDalamudPlugin
         long nowMs = Environment.TickCount64;
         bool canAct = (nowMs - lastActionAtMs) > DebounceMs;
 
-        // transitions
-        if (!wasDead && isDead && canAct)
+        if (!wasDead && isDead)
         {
-            Debug($"Death detected. HP={player.CurrentHp}. Mode={(Configuration.HoldWhileDead ? "Hold" : "Tap")}");
+            Debug("Death detected (initial).");
+
             wasDead = true;
+            deathDetectedAtMs = nowMs;
+            pendingMute = Configuration.UseMuteDelay;
+        }
+
+        if (!Configuration.UseMuteDelay)
+        {
+            pendingMute = false;
             lastActionAtMs = nowMs;
             OnDeath();
         }
-        else if (wasDead && !isDead && canAct)
+
+        if (pendingMute)
         {
-            Debug($"Revive detected. HP={player.CurrentHp}. Mode={(Configuration.HoldWhileDead ? "Hold" : "Tap")}");
+            if (!isDead)
+            {
+                Debug("Pending mute cancelled (revived before delay).");
+                pendingMute = false;
+                deathDetectedAtMs = -1;
+            }
+            else
+            {
+                long elapsed = nowMs - deathDetectedAtMs;
+                if (elapsed >= Configuration.MuteDelayMs)
+                {
+                    Debug($"Mute delay elapsed ({elapsed} ms). Applying mute.");
+                    pendingMute = false;
+                    lastActionAtMs = nowMs;
+                    OnDeath();
+                }
+            }
+        }
+
+        if (wasDead && !isDead && canAct)
+        {
+            Debug("Revive detected.");
+
             wasDead = false;
+            pendingMute = false;
+            deathDetectedAtMs = -1;
+
             lastActionAtMs = nowMs;
             OnRevive();
         }

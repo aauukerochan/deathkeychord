@@ -29,6 +29,9 @@ public sealed class Configuration : IPluginConfiguration
 
     public ushort MainVk = 0x87; // VK_f24
 
+    public bool UseMuteDelay = true;
+    public int MuteDelayMs = 500;
+
     public bool DebugEnabled = false;
     public bool DebugChatEcho = false;
     public bool DebugVerboseUpdate = false;

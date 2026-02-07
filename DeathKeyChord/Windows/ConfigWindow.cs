@@ -10,6 +10,20 @@ public class ConfigWindow : Window, IDisposable
     private readonly Configuration configuration;
     private readonly Plugin plugin;
 
+    private static readonly int[] DelayOptionsMs =
+    {
+        0,
+        250,
+        500,
+        750,
+        1000,
+        1500,
+        2000,
+        3000,
+        4000,
+        5000
+    };
+
     public ConfigWindow(Plugin plugin) : base("DeathKeyChord Settings###DeathKeyChordConfig")
     {
         Flags = ImGuiWindowFlags.NoCollapse;
@@ -29,6 +43,20 @@ public class ConfigWindow : Window, IDisposable
             Flags &= ~ImGuiWindowFlags.NoMove;
         else
             Flags |= ImGuiWindowFlags.NoMove;
+    }
+
+    private static string FormatDelay(int ms)
+    {
+        if (ms == 0)
+            return "No delay";
+        
+        if (ms < 1000)
+            return $"{ms} ms";
+        
+        if (ms % 1000 == 0)
+            return $"{ms / 1000} s";
+        
+        return $"{ms / 1000f:0.0} s";
     }
 
     public override void Draw()
@@ -167,6 +195,39 @@ public class ConfigWindow : Window, IDisposable
             "F24 is an OS-level function key that almost no apps use. "
             + "It’s ideal for automation and won’t interfere with gameplay."
         );
+
+        ImGui.Separator();
+
+        ImGui.Text("Mute delay");
+        int current = configuration.MuteDelayMs;
+        int delayIdx = Array.IndexOf(DelayOptionsMs, current);
+
+        if (delayIdx < 0)
+        {
+            delayIdx = Array.FindIndex(DelayOptionsMs, v => v >= current);
+            if (delayIdx < 0)
+                delayIdx = DelayOptionsMs.Length - 1;
+        }
+
+        if (ImGui.BeginCombo("Delay before muting", FormatDelay(DelayOptionsMs[delayIdx])))
+        {
+            for (int i = 0; i < DelayOptionsMs.Length; i++)
+            {
+                bool selected = i == delayIdx;
+
+                if (ImGui.Selectable(FormatDelay(DelayOptionsMs[i]), selected))
+                {
+                    configuration.MuteDelayMs = DelayOptionsMs[i];
+                    configuration.Save();
+                }
+
+                if (selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+        ImGui.TextWrapped("The mute will only activate if you remain dead for at least this long.");
 
         ImGui.Separator();
 
