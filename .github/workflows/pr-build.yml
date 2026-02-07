@@ -1,8 +1,7 @@
-name: Sample PR Builder for DeathKeyChord
+name: Plugin Builder for DeathKeyChord
 
 on:
-  pull_request:
-    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
 
