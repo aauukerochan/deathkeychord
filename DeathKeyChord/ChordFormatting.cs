@@ -6,10 +6,10 @@ internal static class ChordFormatting
 {
     public static string Format(Configuration c)
     {
-        string main = VkChoices.Common.FirstOrDefault(x => x.Vk == c.MainVk).Label;
+        var main = VkChoices.Common.FirstOrDefault(x => x.Vk == c.MainVk).Label;
         if (string.IsNullOrEmpty(main)) main = $"VK 0x{c.MainVk:X2}";
 
-        string mods = "";
+        var mods = "";
         if (c.ModCtrl) mods += "Ctrl+";
         if (c.ModAlt) mods += "Alt+";
         if (c.ModShift) mods += "Shift+";
