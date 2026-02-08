@@ -16,8 +16,6 @@ public sealed class Configuration : IPluginConfiguration
     public void Initialize(IDalamudPluginInterface pi) => pluginInterface = pi;
     public void Save() => pluginInterface?.SavePluginConfig(this);
 
-    public bool IsConfigWindowMovable = false;
-
     public bool Enabled = true;
 
     public bool HoldWhileDead = true;

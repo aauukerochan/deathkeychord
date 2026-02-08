@@ -41,11 +41,10 @@ public sealed class Plugin : IDalamudPlugin
     private long deathDetectedAtMs = -1;
     private bool pendingMute;
 
-
     private long lastDebugTickAtMs;
     public bool DebugWasDead => wasDead;
     public bool DebugChordHeld => chordHeld;
-    public uint? DebugHp => ObjectTable.LocalPlayer?.CurrentHp;
+    public static uint? DebugHp => ObjectTable.LocalPlayer?.CurrentHp;
 
     public Plugin()
     {
@@ -167,12 +166,10 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
 
+        var isDead = player.CurrentHp <= 0;
 
-
-        bool isDead = player.CurrentHp <= 0;
-
-        long nowMs = Environment.TickCount64;
-        bool canAct = (nowMs - lastActionAtMs) > DebounceMs;
+        var nowMs = Environment.TickCount64;
+        var canAct = (nowMs - lastActionAtMs) > DebounceMs;
 
         if (!wasDead && isDead)
         {
@@ -200,7 +197,7 @@ public sealed class Plugin : IDalamudPlugin
             }
             else
             {
-                long elapsed = nowMs - deathDetectedAtMs;
+                var elapsed = nowMs - deathDetectedAtMs;
                 if (elapsed >= Configuration.MuteDelayMs)
                 {
                     Debug($"Mute delay elapsed ({elapsed} ms). Applying mute.");

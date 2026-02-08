@@ -4,11 +4,9 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Dalamud.Plugin.Services;
 
-internal sealed class KeyChordInjectorWin32
+internal sealed partial class KeyChordInjectorWin32(IPluginLog log)
 {
-    private readonly IPluginLog log;
-    public KeyChordInjectorWin32(IPluginLog log) => this.log = log;
-
+    private readonly IPluginLog log = log;
     private const uint INPUT_KEYBOARD = 1;
 
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -62,8 +60,8 @@ internal sealed class KeyChordInjectorWin32
         public ushort wParamH;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     private static INPUT KeyDownVk(ushort vk) => new()
     {
@@ -94,7 +92,7 @@ internal sealed class KeyChordInjectorWin32
 
         if (sent != arr.Length)
         {
-            int err = Marshal.GetLastWin32Error();
+            var err = Marshal.GetLastWin32Error();
             log.Warning($"SendInput({label}) sent {sent}/{arr.Length}. Win32Error={err} ({new Win32Exception(err).Message}). INPUT size={Marshal.SizeOf<INPUT>()}");
         }
         else
@@ -117,10 +115,11 @@ internal sealed class KeyChordInjectorWin32
     public void HoldChordUp(bool ctrl, bool alt, bool shift, bool win, ushort mainVk)
     {
         var mods = GetMods(ctrl, alt, shift, win);
-        var inputs = new List<INPUT>(mods.Count + 1);
-
-        inputs.Add(KeyUpVk(mainVk));
-        for (int i = mods.Count - 1; i >= 0; i--) inputs.Add(KeyUpVk(mods[i]));
+        var inputs = new List<INPUT>(mods.Count + 1)
+        {
+            KeyUpVk(mainVk)
+        };
+        for (var i = mods.Count - 1; i >= 0; i--) inputs.Add(KeyUpVk(mods[i]));
 
         Send("HoldUp", inputs);
     }
@@ -128,12 +127,12 @@ internal sealed class KeyChordInjectorWin32
     public void TapChord(bool ctrl, bool alt, bool shift, bool win, ushort mainVk)
     {
         var mods = GetMods(ctrl, alt, shift, win);
-        var inputs = new List<INPUT>(mods.Count * 2 + 2);
+        var inputs = new List<INPUT>((mods.Count * 2) + 2);
 
         foreach (var m in mods) inputs.Add(KeyDownVk(m));
         inputs.Add(KeyDownVk(mainVk));
         inputs.Add(KeyUpVk(mainVk));
-        for (int i = mods.Count - 1; i >= 0; i--) inputs.Add(KeyUpVk(mods[i]));
+        for (var i = mods.Count - 1; i >= 0; i--) inputs.Add(KeyUpVk(mods[i]));
 
         Send("Tap", inputs);
     }

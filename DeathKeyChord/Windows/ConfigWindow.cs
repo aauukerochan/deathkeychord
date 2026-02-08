@@ -26,7 +26,7 @@ public class ConfigWindow : Window, IDisposable
 
     public ConfigWindow(Plugin plugin) : base("DeathKeyChord Settings###DeathKeyChordConfig")
     {
-        Flags = ImGuiWindowFlags.NoCollapse;
+        Flags = ImGuiWindowFlags.NoCollapse & ~ImGuiWindowFlags.NoMove;
 
         Size = new Vector2(520, 360);
         SizeCondition = ImGuiCond.FirstUseEver;
@@ -37,27 +37,7 @@ public class ConfigWindow : Window, IDisposable
 
     public void Dispose() { }
 
-    public override void PreDraw()
-    {
-        if (configuration.IsConfigWindowMovable)
-            Flags &= ~ImGuiWindowFlags.NoMove;
-        else
-            Flags |= ImGuiWindowFlags.NoMove;
-    }
-
-    private static string FormatDelay(int ms)
-    {
-        if (ms == 0)
-            return "No delay";
-        
-        if (ms < 1000)
-            return $"{ms} ms";
-        
-        if (ms % 1000 == 0)
-            return $"{ms / 1000} s";
-        
-        return $"{ms / 1000f:0.0} s";
-    }
+    public override void PreDraw() { }
 
     public override void Draw()
     {
@@ -73,21 +53,104 @@ public class ConfigWindow : Window, IDisposable
             ImGui.Separator();
         }
 
+        DrawEnabledCheckbox();
+
+        DrawHoldCheckbox();
+
+        ImGui.Separator();
+        DrawChordConfig();
+
+        ImGui.Separator();
+
+        DrawMuteDelayConfig();
+
+        ImGui.Separator();
+
+        DrawDebugConfig();
+    }
+
+    private void DrawDebugConfig()
+    {
+        ImGui.Text("Debug");
+
+        var dbg = configuration.DebugEnabled;
+        if (ImGui.Checkbox("Enable debug logging", ref dbg))
+        {
+            configuration.DebugEnabled = dbg;
+            configuration.Save();
+        }
+
+        var chat = configuration.DebugChatEcho;
+        if (ImGui.Checkbox("Also print debug to chat", ref chat))
+        {
+            configuration.DebugChatEcho = chat;
+            configuration.Save();
+        }
+
+        var verbose = configuration.DebugVerboseUpdate;
+        if (ImGui.Checkbox("Verbose periodic state logs", ref verbose))
+        {
+            configuration.DebugVerboseUpdate = verbose;
+            configuration.Save();
+        }
+    }
+
+    private void DrawMuteDelayConfig()
+    {
+        ImGui.Text("Mute delay");
+        var current = configuration.MuteDelayMs;
+        var delayIdx = Array.IndexOf(DelayOptionsMs, current);
+
+        if (delayIdx < 0)
+        {
+            delayIdx = Array.FindIndex(DelayOptionsMs, v => v >= current);
+            if (delayIdx < 0)
+                delayIdx = DelayOptionsMs.Length - 1;
+        }
+
+        if (ImGui.BeginCombo("Delay before muting", FormatDelay(DelayOptionsMs[delayIdx])))
+        {
+            for (var i = 0; i < DelayOptionsMs.Length; i++)
+            {
+                var selected = i == delayIdx;
+
+                if (ImGui.Selectable(FormatDelay(DelayOptionsMs[i]), selected))
+                {
+                    configuration.MuteDelayMs = DelayOptionsMs[i];
+                    configuration.Save();
+                }
+
+                if (selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+        ImGui.TextWrapped("The mute will only activate if you remain dead for at least this long.");
+    }
+
+    private void DrawEnabledCheckbox()
+    {
         var enabled = configuration.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
         {
             configuration.Enabled = enabled;
             configuration.Save();
         }
+    }
 
+    private void DrawHoldCheckbox()
+    {
         var hold = configuration.HoldWhileDead;
         if (ImGui.Checkbox("Hold chord while dead (recommended)", ref hold))
         {
             configuration.HoldWhileDead = hold;
             configuration.Save();
         }
+    }
 
-        ImGui.Separator();
+    private void DrawChordConfig()
+    {
         ImGui.Text("Chord");
 
         var ctrl = configuration.ModCtrl;
@@ -120,15 +183,15 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var choices = VkChoices.Common;
-        int idx = Array.FindIndex(choices, c => c.Vk == configuration.MainVk);
+        var idx = Array.FindIndex(choices, c => c.Vk == configuration.MainVk);
         if (idx < 0) idx = Array.FindIndex(choices, c => c.Vk == 0x4D); // M
         if (idx < 0) idx = 0;
 
         if (ImGui.BeginCombo("Main key", choices[idx].Label))
         {
-            for (int i = 0; i < choices.Length; i++)
+            for (var i = 0; i < choices.Length; i++)
             {
-                bool selected = choices[i].Vk == configuration.MainVk;
+                var selected = choices[i].Vk == configuration.MainVk;
                 if (ImGui.Selectable(choices[i].Label, selected))
                 {
                     configuration.MainVk = choices[i].Vk;
@@ -143,14 +206,14 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Text($"Current: {plugin.GetChordLabel()}");
 
-        bool noMods = !configuration.ModCtrl && !configuration.ModAlt && !configuration.ModShift && !configuration.ModWin;
+        var noMods = !configuration.ModCtrl && !configuration.ModAlt && !configuration.ModShift && !configuration.ModWin;
         if (noMods)
         {
             ImGui.TextColored(new Vector4(1f, 0.6f, 0.2f, 1f),
                 "⚠ Using a single key w/o modifiers may conflict with other apps.");
         }
 
-        bool risky =
+        var risky =
             configuration.MainVk < 0x7C || configuration.MainVk > 0x87; // not F13–F24
 
         if (risky)
@@ -164,7 +227,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         ImGui.Button("Test chord (hold)");
-        bool active = ImGui.IsItemActive();
+        var active = ImGui.IsItemActive();
 
         if (active && !plugin.IsTestHoldActive)
         {
@@ -195,72 +258,20 @@ public class ConfigWindow : Window, IDisposable
             "F24 is an OS-level function key that almost no apps use. "
             + "It’s ideal for automation and won’t interfere with gameplay."
         );
+    }
 
-        ImGui.Separator();
-
-        ImGui.Text("Mute delay");
-        int current = configuration.MuteDelayMs;
-        int delayIdx = Array.IndexOf(DelayOptionsMs, current);
-
-        if (delayIdx < 0)
-        {
-            delayIdx = Array.FindIndex(DelayOptionsMs, v => v >= current);
-            if (delayIdx < 0)
-                delayIdx = DelayOptionsMs.Length - 1;
-        }
-
-        if (ImGui.BeginCombo("Delay before muting", FormatDelay(DelayOptionsMs[delayIdx])))
-        {
-            for (int i = 0; i < DelayOptionsMs.Length; i++)
-            {
-                bool selected = i == delayIdx;
-
-                if (ImGui.Selectable(FormatDelay(DelayOptionsMs[i]), selected))
-                {
-                    configuration.MuteDelayMs = DelayOptionsMs[i];
-                    configuration.Save();
-                }
-
-                if (selected)
-                    ImGui.SetItemDefaultFocus();
-            }
-
-            ImGui.EndCombo();
-        }
-        ImGui.TextWrapped("The mute will only activate if you remain dead for at least this long.");
-
-        ImGui.Separator();
-
-        var movable = configuration.IsConfigWindowMovable;
-        if (ImGui.Checkbox("Movable Config Window", ref movable))
-        {
-            configuration.IsConfigWindowMovable = movable;
-            configuration.Save();
-        }
-
-        ImGui.Separator();
-        ImGui.Text("Debug");
-
-        var dbg = configuration.DebugEnabled;
-        if (ImGui.Checkbox("Enable debug logging", ref dbg))
-        {
-            configuration.DebugEnabled = dbg;
-            configuration.Save();
-        }
-
-        var chat = configuration.DebugChatEcho;
-        if (ImGui.Checkbox("Also print debug to chat", ref chat))
-        {
-            configuration.DebugChatEcho = chat;
-            configuration.Save();
-        }
-
-        var verbose = configuration.DebugVerboseUpdate;
-        if (ImGui.Checkbox("Verbose periodic state logs", ref verbose))
-        {
-            configuration.DebugVerboseUpdate = verbose;
-            configuration.Save();
-        }
+    private static string FormatDelay(int ms)
+    {
+        if (ms == 0)
+            return "No delay";
+        
+        if (ms < 1000)
+            return $"{ms} ms";
+        
+        if (ms % 1000 == 0)
+            return $"{ms / 1000} s";
+        
+        return $"{ms / 1000f:0.0} s";
     }
 }
 

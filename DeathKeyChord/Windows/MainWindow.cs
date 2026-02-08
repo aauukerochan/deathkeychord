@@ -39,7 +39,7 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
 
-        var hp = plugin.DebugHp;
+        var hp = Plugin.DebugHp;
         ImGui.Text($"HP: {(hp.HasValue ? hp.Value.ToString() : "n/a")}");
         ImGui.Text($"Detected dead: {plugin.DebugWasDead}");
         ImGui.Text($"Chord held: {plugin.DebugChordHeld}");
